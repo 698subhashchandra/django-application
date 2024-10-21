@@ -1,0 +1,130 @@
+@Library('Shared') _
+pipeline {
+    agent any
+
+    environment {
+        GITHUB_CREDENTIALS_ID = 'Github-cred'
+        GITHUB_REPO_URL = 'https://github.com/698subhashchandra/node-todo.git'
+        GITHUB_BRANCH = 'main'
+
+        FRONTEND_IMAGE_NAME = 'wanderlust-frontend-beta'
+        NOTIFICATION_EMAIL = '910jpyadav@gmail.com'
+        KUBERNETES_DIR = 'kubernetes'
+    }
+
+    parameters {
+        string(name: 'FRONTEND_DOCKER_TAG', defaultValue: '', description: 'Frontend Docker tag of the image built by the CI job')
+
+    }
+
+    stages {
+        stage("Workspace Cleanup") {
+            steps {
+                cleanWs()
+            }
+        }
+
+        stage('Git: Code Checkout') {
+            steps {
+                script {
+                    code_checkout("${GITHUB_REPO_URL}", "${GITHUB_BRANCH}")
+                }
+            }
+        }
+
+        stage('Verify: Docker Image Tags') {
+            steps {
+                script {
+                    echo "FRONTEND_DOCKER_TAG: ${params.FRONTEND_DOCKER_TAG}"
+                    echo "BACKEND_DOCKER_TAG: ${params.BACKEND_DOCKER_TAG}"
+                }
+            }
+        }
+
+        stage("Update: Kubernetes manifests") {
+            steps {
+                script {
+
+                    def frontend_image = "${FRONTEND_IMAGE_NAME}:${params.FRONTEND_DOCKER_TAG}"
+
+                    dir(KUBERNETES_DIR) {
+                        sh """
+                            sed -i -e 's/${BACKEND_IMAGE_NAME}.*/${backend_image}/g' backend.yaml
+                            sed -i -e 's/${FRONTEND_IMAGE_NAME}.*/${frontend_image}/g' frontend.yaml
+                        """
+                    }
+                }
+            }
+        }
+
+        stage("Git: Code update and push to GitHub") {
+            steps {
+                script {
+                    withCredentials([gitUsernamePassword(credentialsId: "${GITHUB_CREDENTIALS_ID}", gitToolName: 'Default')]) {
+                        sh '''
+                            echo "Checking repository status: "
+                            git status
+
+                            echo "Adding changes to git: "
+                            git add .
+
+                            echo "Committing changes: "
+                            git commit -m "Updated Kubernetes manifests with new Docker tags"
+
+                            echo "Pushing changes to GitHub: "
+                            git push ${GITHUB_REPO_URL} ${GITHUB_BRANCH}
+                        '''
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            script {
+                emailext attachLog: true,
+                from: "${NOTIFICATION_EMAIL}",
+                subject: "Wanderlust Application has been updated and deployed - '${currentBuild.result}'",
+                body: """
+                    <html>
+                    <body>
+                        <div style="background-color: #FFA07A; padding: 10px; margin-bottom: 10px;">
+                            <p style="color: black; font-weight: bold;">Project: ${env.JOB_NAME}</p>
+                        </div>
+                        <div style="background-color: #90EE90; padding: 10px; margin-bottom: 10px;">
+                            <p style="color: black; font-weight: bold;">Build Number: ${env.BUILD_NUMBER}</p>
+                        </div>
+                        <div style="background-color: #87CEEB; padding: 10px; margin-bottom: 10px;">
+                            <p style="color: black; font-weight: bold;">URL: ${env.BUILD_URL}</p>
+                        </div>
+                    </body>
+                    </html>
+                """,
+                to: "${NOTIFICATION_EMAIL}",
+                mimeType: 'text/html'
+            }
+        }
+        failure {
+            script {
+                emailext attachLog: true,
+                from: "${NOTIFICATION_EMAIL}",
+                subject: "Wanderlust Application build failed - '${currentBuild.result}'",
+                body: """
+                    <html>
+                    <body>
+                        <div style="background-color: #FFA07A; padding: 10px; margin-bottom: 10px;">
+                            <p style="color: black; font-weight: bold;">Project: ${env.JOB_NAME}</p>
+                        </div>
+                        <div style="background-color: #90EE90; padding: 10px; margin-bottom: 10px;">
+                            <p style="color: black; font-weight: bold;">Build Number: ${env.BUILD_NUMBER}</p>
+                        </div>
+                    </body>
+                    </html>
+                """,
+                to: "${NOTIFICATION_EMAIL}",
+                mimeType: 'text/html'
+            }
+        }
+    }
+}
