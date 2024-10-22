@@ -1,8 +1,13 @@
 version : "3.3"
 services :
-  web :
-     build : 698subhashchandra/django-app:latest
-     ports :
-         - "8000:8000"
-     volumes:
+  backend:
+    container_name: web
+    build: ../django-application
+    env_file:
+      - ../django-application/.env
+    ports:
+      - "31000:8000"
+    volumes:
       - ./volume/store_data/db.sqlite3:/data/db.sqlite3
+volumes:
+  data:
