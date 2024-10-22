@@ -9,7 +9,7 @@ COPY . .
 
 RUN python manage.py migrate
 
-COPY .env .env.local
+COPY env env.local
 
 EXPOSE 8000
 
