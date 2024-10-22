@@ -2,7 +2,7 @@ version : "3.3"
 services :
   backend:
     container_name: web
-    build: ../django-application
+    image: 698subhashchandra/django-app:latest
     env_file:
       - ../django-application/.env
     ports:
