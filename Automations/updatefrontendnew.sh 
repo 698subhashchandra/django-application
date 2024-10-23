@@ -7,7 +7,7 @@ INSTANCE_ID="i-01993fd05b395323d"
 ipv4_address=$(aws ec2 describe-instances --instance-ids $INSTANCE_ID --query 'Reservations[0].Instances[0].PublicIpAddress' --output text)
 
 # Path to the env file
-file_to_find="../env.docker"
+file_to_find="- ../django-application/env"
 
 # Check the current VITE_API_PATH in the env file
 current_url=$(cat $file_to_find)
