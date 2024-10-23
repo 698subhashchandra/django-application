@@ -10,7 +10,7 @@
      # - ./volume/store_data/db.sqlite3:/data/db.sqlite3
 #volumes:
  # data:
-version : "3.3"
+#version : "3.3"
 services:
   backend:
     container_name: web
